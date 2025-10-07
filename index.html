@@ -14,7 +14,7 @@
             <div class="header-content">
                 <div class="logo">
                     <img src="logo.png" alt="ТМК" class="logo-image">
-                    <h1>ТМК</h1>
+                    <h1>Трубная Металлургическая Компания</h1>
                 </div>
                 <div class="header-actions">
                     <button class="theme-toggle" id="themeToggle">
@@ -38,13 +38,29 @@
                 </div>
             </section>
 
-            <!-- Filters -->
+            <!-- Filters & Sorting -->
             <section class="filters-section">
                 <div class="section-card">
                     <div class="filters-header">
-                        <h3>🔧 Фильтры</h3>
+                        <h3>🔧 Фильтры и сортировка</h3>
                         <button class="clear-filters" id="clearFilters">🗑️ Очистить</button>
                     </div>
+                    
+                    <!-- Sorting Controls -->
+                    <div class="sorting-controls">
+                        <div class="filter-group">
+                            <label>Сортировка:</label>
+                            <select id="sortBy" class="filter-select">
+                                <option value="name">По названию</option>
+                                <option value="price">По цене (возрастание)</option>
+                                <option value="price-desc">По цене (убывание)</option>
+                                <option value="diameter">По диаметру</option>
+                                <option value="thickness">По толщине стенки</option>
+                                <option value="stock">По наличию</option>
+                            </select>
+                        </div>
+                    </div>
+                    
                     <div class="filters-grid">
                         <div class="filter-group">
                             <label>🏭 Склад</label>
