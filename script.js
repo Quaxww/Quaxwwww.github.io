@@ -1,3 +1,5 @@
+// script.js - полностью обновленная версия с реальной отправкой заказов в базу данных
+
 class TMKApp {
     constructor() {
         this.products = [];
@@ -11,6 +13,7 @@ class TMKApp {
             steel: '',
             search: ''
         };
+        this.sortBy = 'name';
         this.cart = [];
         this.currentProduct = null;
         this.currentUnit = 'meters';
@@ -20,6 +23,10 @@ class TMKApp {
             operator: '+',
             answer: 0
         };
+        
+        // API endpoints - измените на ваш URL бэкенда
+        this.API_BASE_URL = 'http://localhost:3001/api';
+        this.isServerConnected = false;
         
         this.init();
     }
@@ -31,6 +38,9 @@ class TMKApp {
         this.renderProducts();
         this.bindEvents();
         this.updateCartCount();
+        
+        // Проверяем соединение с сервером
+        this.checkServerConnection();
         
         this.showNotification('ТМК - Добро пожаловать!', 'success');
     }
@@ -100,13 +110,6 @@ class TMKApp {
             const stockId = remnant?.IDStock || price?.IDStock;
             const stock = stocks.find(s => s.IDStock === stockId) || {};
             const typeInfo = types.find(t => t.IDType === product.IDType) || {};
-
-            console.log(`🔗 Product ${product.ID}:`, {
-                price: !!price,
-                remnant: !!remnant,
-                stock: !!stock,
-                typeInfo: !!typeInfo
-            });
 
             return {
                 ...product,
@@ -214,6 +217,41 @@ class TMKApp {
         if (availableElement) availableElement.textContent = `${availableCount} в наличии`;
     }
 
+    sortProducts() {
+        switch (this.sortBy) {
+            case 'name':
+                this.filteredProducts.sort((a, b) => a.Name.localeCompare(b.Name));
+                break;
+            case 'price':
+                this.filteredProducts.sort((a, b) => {
+                    const priceA = a.price?.PriceM || 0;
+                    const priceB = b.price?.PriceM || 0;
+                    return priceA - priceB;
+                });
+                break;
+            case 'price-desc':
+                this.filteredProducts.sort((a, b) => {
+                    const priceA = a.price?.PriceM || 0;
+                    const priceB = b.price?.PriceM || 0;
+                    return priceB - priceA;
+                });
+                break;
+            case 'diameter':
+                this.filteredProducts.sort((a, b) => (a.Diameter || 0) - (b.Diameter || 0));
+                break;
+            case 'thickness':
+                this.filteredProducts.sort((a, b) => (a.PipeWallThickness || 0) - (b.PipeWallThickness || 0));
+                break;
+            case 'stock':
+                this.filteredProducts.sort((a, b) => {
+                    const stockA = a.remnant?.InStockM || 0;
+                    const stockB = b.remnant?.InStockM || 0;
+                    return stockB - stockA;
+                });
+                break;
+        }
+    }
+
     renderProducts() {
         const grid = document.getElementById('productsGrid');
         if (!grid) return;
@@ -239,6 +277,8 @@ class TMKApp {
         const canAdd = stockStatus !== 'none';
         const discount = priceInfo.discount > 0;
         
+        const weight = product.Koef ? (product.Koef * 1000).toFixed(2) : 'н/д';
+        
         return `
             <div class="product-card" onclick="app.showProductModal('${product.ID}')">
                 <div class="product-header">
@@ -249,9 +289,12 @@ class TMKApp {
                 <div class="product-specs">
                     <div>📏 Диаметр: ${product.Diameter} мм</div>
                     <div>🔧 Толщина: ${product.PipeWallThickness} мм</div>
+                    <div>⚖️ Вес: ${weight} кг/м</div>
                     <div>📋 ГОСТ: ${product.Gost || 'Не указан'}</div>
                     <div>⚡ Сталь: ${product.SteelGrade || 'Не указана'}</div>
                     <div>🏭 Производитель: ${product.Manufacturer || 'Не указан'}</div>
+                    <div>📦 Тип: ${product.ProductionType || 'Не указан'}</div>
+                    <div>📍 Склад: ${product.stock.Stock || 'Не указан'}</div>
                 </div>
                 <div class="product-stock">
                     <span class="stock-status ${stockStatus}">
@@ -351,18 +394,23 @@ class TMKApp {
         const stockStatus = this.getStockStatus(product);
         const stockM = product.remnant.InStockM || 0;
         const stockT = product.remnant.InStockT || 0;
+        const weight = product.Koef ? (product.Koef * 1000).toFixed(2) : 'н/д';
         
         return `
             <div class="product-name">${product.Name}</div>
             <div class="product-specs">
                 <div><strong>📏 Диаметр:</strong> ${product.Diameter} мм</div>
                 <div><strong>🔧 Толщина стенки:</strong> ${product.PipeWallThickness} мм</div>
+                <div><strong>⚖️ Вес погонного метра:</strong> ${weight} кг/м</div>
                 <div><strong>📋 ГОСТ:</strong> ${product.Gost || 'Не указан'}</div>
                 <div><strong>⚡ Марка стали:</strong> ${product.SteelGrade || 'Не указана'}</div>
                 <div><strong>🏭 Производитель:</strong> ${product.Manufacturer || 'Не указан'}</div>
                 <div><strong>📦 Тип продукции:</strong> ${product.typeInfo.Type || 'Не указан'}</div>
                 <div><strong>📍 Склад:</strong> ${product.stock.Stock || 'Не указан'}</div>
+                <div><strong>🏢 Адрес склада:</strong> ${product.stock.Address || 'Не указан'}</div>
                 <div><strong>📊 В наличии:</strong> ${stockM.toFixed(1)} м / ${stockT.toFixed(2)} т</div>
+                <div><strong>📝 Форма поставки:</strong> ${product.FormOfLength || 'Не указана'}</div>
+                <div><strong>🔧 Тип производства:</strong> ${product.ProductionType || 'Не указан'}</div>
             </div>
         `;
     }
@@ -392,7 +440,6 @@ class TMKApp {
             (this.currentProduct.remnant.InStockM || 0) : 
             (this.currentProduct.remnant.InStockT || 0);
 
-        // Update stock info
         const availableStockElement = document.getElementById('availableStock');
         const stockUnitElement = document.getElementById('stockUnit');
         if (availableStockElement) availableStockElement.textContent = availableStock.toFixed(2);
@@ -409,7 +456,6 @@ class TMKApp {
             }
         }
 
-        // Update prices
         const unitPriceElement = document.getElementById('unitPrice');
         const totalPriceElement = document.getElementById('totalPrice');
         const discountAmountElement = document.getElementById('discountAmount');
@@ -421,7 +467,6 @@ class TMKApp {
                 `${(priceInfo.discount * 100).toFixed(0)}%` : '0%';
         }
 
-        // Update add to cart button
         const addButton = document.getElementById('addToCart');
         if (addButton) {
             if (quantity <= 0 || quantity > availableStock) {
@@ -470,13 +515,11 @@ class TMKApp {
             discount: priceInfo.discount
         };
 
-        // Check if item already exists in cart
         const existingIndex = this.cart.findIndex(item => 
             item.id === cartItem.id && item.unit === cartItem.unit
         );
 
         if (existingIndex > -1) {
-            // Update existing item
             const existingItem = this.cart[existingIndex];
             const newQuantity = existingItem.quantity + quantity;
             
@@ -488,7 +531,6 @@ class TMKApp {
             existingItem.quantity = newQuantity;
             existingItem.totalPrice = existingItem.unitPrice * newQuantity;
         } else {
-            // Add new item
             this.cart.push(cartItem);
         }
 
@@ -583,7 +625,7 @@ class TMKApp {
 
     updateCart() {
         this.updateCartCount();
-        this.showCart(); // Refresh cart display
+        this.showCart();
     }
 
     updateCartCount() {
@@ -615,17 +657,13 @@ class TMKApp {
         if (finalTotalElement) finalTotalElement.textContent = `${total.toLocaleString()} ₽`;
     }
 
-    // Капча методы
     generateCaptcha() {
-        // Генерируем случайные числа от 1 до 20
         this.captcha.num1 = Math.floor(Math.random() * 20) + 1;
         this.captcha.num2 = Math.floor(Math.random() * 20) + 1;
         
-        // Выбираем случайный оператор
         const operators = ['+', '-', '*'];
         this.captcha.operator = operators[Math.floor(Math.random() * operators.length)];
         
-        // Вычисляем правильный ответ
         switch (this.captcha.operator) {
             case '+':
                 this.captcha.answer = this.captcha.num1 + this.captcha.num2;
@@ -638,13 +676,11 @@ class TMKApp {
                 break;
         }
         
-        // Отображаем вопрос капчи
         const captchaQuestion = document.getElementById('captchaQuestion');
         if (captchaQuestion) {
             captchaQuestion.textContent = `Сколько будет ${this.captcha.num1} ${this.captcha.operator} ${this.captcha.num2}?`;
         }
         
-        // Очищаем поле ввода и подсказку
         const captchaAnswer = document.getElementById('captchaAnswer');
         const captchaHint = document.getElementById('captchaHint');
         if (captchaAnswer) captchaAnswer.value = '';
@@ -717,7 +753,6 @@ class TMKApp {
     }
 
     async submitOrder() {
-        // Получаем значения напрямую из полей ввода
         const customerName = document.getElementById('customerName')?.value.trim();
         const customerPhone = document.getElementById('customerPhone')?.value.trim();
         const customerEmail = document.getElementById('customerEmail')?.value.trim();
@@ -726,16 +761,6 @@ class TMKApp {
         const orderComment = document.getElementById('orderComment')?.value.trim();
         const captchaAnswer = document.getElementById('captchaAnswer')?.value.trim();
         
-        console.log('Form data:', {
-            customerName,
-            customerPhone, 
-            customerEmail,
-            customerCompany,
-            deliveryAddress,
-            orderComment,
-            captchaAnswer
-        });
-
         // Валидация обязательных полей
         if (!customerName) {
             this.showNotification('Заполните поле ФИО', 'error');
@@ -755,7 +780,6 @@ class TMKApp {
             return;
         }
 
-        // Проверка формата email
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(customerEmail)) {
             this.showNotification('Введите корректный email адрес', 'error');
@@ -763,7 +787,6 @@ class TMKApp {
             return;
         }
 
-        // Проверка формата телефона (базовая проверка)
         const phoneRegex = /^[\d\s\-\+\(\)]+$/;
         if (!phoneRegex.test(customerPhone) || customerPhone.replace(/\D/g, '').length < 10) {
             this.showNotification('Введите корректный номер телефона', 'error');
@@ -771,7 +794,6 @@ class TMKApp {
             return;
         }
 
-        // Проверка капчи
         if (!captchaAnswer) {
             this.showNotification('Решите задачу для подтверждения', 'error');
             document.getElementById('captchaAnswer')?.focus();
@@ -782,10 +804,11 @@ class TMKApp {
         if (userAnswer !== this.captcha.answer) {
             this.showNotification('Неверный ответ на задачу. Попробуйте снова.', 'error');
             document.getElementById('captchaAnswer')?.focus();
-            this.generateCaptcha(); // Генерируем новую капчу
+            this.generateCaptcha();
             return;
         }
 
+        // Подготовка данных для отправки
         const orderData = {
             customer: {
                 name: customerName,
@@ -801,51 +824,148 @@ class TMKApp {
                 total: this.cart.reduce((sum, item) => sum + item.totalPrice, 0),
                 comment: orderComment || ''
             },
-            timestamp: new Date().toISOString()
+            captcha: {
+                question: `${this.captcha.num1} ${this.captcha.operator} ${this.captcha.num2}`,
+                answer: this.captcha.answer.toString()
+            }
         };
 
         try {
             this.showNotification('⏳ Оформляем заказ...', 'info');
             
-            // Блокируем кнопку отправки
             const submitBtn = document.getElementById('submitOrder');
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '⏳ Обработка...';
             }
-            
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            const orderId = 'TMK-' + Date.now();
-            this.showNotification(`🎉 Заказ №${orderId} успешно оформлен!`, 'success');
-            
-            // Очищаем корзину и форму
-            this.cart = [];
-            this.updateCartCount();
-            this.closeModal('checkoutModal');
-            
-            // Сбрасываем форму
-            const formFields = [
-                'customerName', 'customerPhone', 'customerEmail', 
-                'customerCompany', 'deliveryAddress', 'orderComment', 'captchaAnswer'
-            ];
-            
-            formFields.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field) field.value = '';
+
+            // Реальный API вызов
+            const response = await fetch(`${this.API_BASE_URL}/orders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderData)
             });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `HTTP error! status: ${response.status}`);
+            }
+
+            if (result.success) {
+                const orderNumber = result.orderNumber || result.data?.orderNumber;
+                this.showNotification(`🎉 Заказ №${orderNumber} успешно оформлен!`, 'success');
+                
+                // Очищаем корзину и форму
+                this.cart = [];
+                this.updateCartCount();
+                this.closeModal('checkoutModal');
+                this.resetOrderForm();
+                
+                setTimeout(() => {
+                    this.showNotification(`📋 Номер вашего заказа: ${orderNumber}. Мы свяжемся с вами в ближайшее время!`, 'success');
+                }, 2000);
+                
+            } else {
+                throw new Error(result.error || 'Order creation failed');
+            }
             
         } catch (error) {
             console.error('Order submission error:', error);
-            this.showNotification('❌ Ошибка при оформлении заказа', 'error');
+            
+            let errorMessage = '❌ Ошибка при оформлении заказа';
+            
+            if (error.message.includes('Failed to fetch')) {
+                errorMessage = '❌ Не удалось соединиться с сервером. Проверьте подключение к интернету.';
+            } else if (error.message.includes('NetworkError')) {
+                errorMessage = '❌ Проблемы с сетью. Проверьте подключение к интернету.';
+            } else if (error.message.includes('429')) {
+                errorMessage = '❌ Слишком много запросов. Пожалуйста, подождите немного.';
+            } else if (error.message.includes('500')) {
+                errorMessage = '❌ Внутренняя ошибка сервера. Пожалуйста, попробуйте позже.';
+            }
+            
+            this.showNotification(errorMessage, 'error');
+            console.error('Full error details:', error);
+            
         } finally {
-            // Разблокируем кнопку в любом случае
             const submitBtn = document.getElementById('submitOrder');
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '✅ Подтвердить заказ';
             }
+        }
+    }
+
+    resetOrderForm() {
+        const formFields = [
+            'customerName', 'customerPhone', 'customerEmail', 
+            'customerCompany', 'deliveryAddress', 'orderComment', 'captchaAnswer'
+        ];
+        
+        formFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.value = '';
+                field.style.borderColor = 'var(--border)';
+            }
+        });
+        
+        const captchaHint = document.getElementById('captchaHint');
+        if (captchaHint) {
+            captchaHint.textContent = '';
+            captchaHint.className = 'captcha-hint';
+        }
+        
+        this.generateCaptcha();
+    }
+
+    async checkServerConnection() {
+        try {
+            const response = await fetch(`${this.API_BASE_URL}/health`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+            
+            if (response.ok) {
+                this.isServerConnected = true;
+                console.log('✅ Сервер доступен');
+                return true;
+            } else {
+                this.isServerConnected = false;
+                console.warn('⚠️ Сервер отвечает с ошибкой:', response.status);
+                return false;
+            }
+        } catch (error) {
+            this.isServerConnected = false;
+            console.error('❌ Сервер недоступен:', error.message);
+            return false;
+        }
+    }
+
+    async checkOrderStatus(orderNumber) {
+        try {
+            const response = await fetch(`${this.API_BASE_URL}/orders/number/${orderNumber}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                return result.data;
+            } else {
+                throw new Error(result.error || 'Failed to fetch order status');
+            }
+            
+        } catch (error) {
+            console.error('Error checking order status:', error);
+            throw error;
         }
     }
 
@@ -866,6 +986,7 @@ class TMKApp {
                    matchesGost && matchesSteel && matchesSearch;
         });
 
+        this.sortProducts();
         this.renderProducts();
     }
 
@@ -879,10 +1000,12 @@ class TMKApp {
             steel: '',
             search: ''
         };
+        
+        this.sortBy = 'name';
 
         const filterElements = [
             'stockFilter', 'typeFilter', 'diameterFilter', 
-            'thicknessFilter', 'gostFilter', 'steelFilter', 'searchInput'
+            'thicknessFilter', 'gostFilter', 'steelFilter', 'searchInput', 'sortBy'
         ];
 
         filterElements.forEach(id => {
@@ -890,13 +1013,16 @@ class TMKApp {
             if (element) element.value = '';
         });
 
+        const sortSelect = document.getElementById('sortBy');
+        if (sortSelect) sortSelect.value = 'name';
+
         this.filteredProducts = [...this.products];
+        this.sortProducts();
         this.renderProducts();
         this.showNotification('Фильтры очищены', 'success');
     }
 
     showNotification(message, type = 'info') {
-        // Create notification element
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.style.cssText = `
@@ -910,16 +1036,14 @@ class TMKApp {
             z-index: 1001;
             transform: translateX(400px);
             transition: transform 0.3s ease;
-            background: ${type === 'success' ? '#48BB78' : type === 'error' ? '#F56565' : '#FF6B35'};
+            background: ${type === 'success' ? '#38A169' : type === 'error' ? '#E53E3E' : type === 'warning' ? '#DD6B20' : '#3182CE'};
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         `;
         notification.textContent = message;
         document.body.appendChild(notification);
 
-        // Animate in
         setTimeout(() => notification.style.transform = 'translateX(0)', 100);
         
-        // Remove after 3 seconds
         setTimeout(() => {
             notification.style.transform = 'translateX(400px)';
             setTimeout(() => {
@@ -947,6 +1071,16 @@ class TMKApp {
     }
 
     bindEvents() {
+        // Проверяем соединение с сервером при загрузке
+        setTimeout(() => {
+            this.checkServerConnection().then(isConnected => {
+                if (!isConnected) {
+                    console.warn('⚠️ Backend server is not available. Orders will not be saved.');
+                    this.showNotification('⚠️ Сервер временно недоступен. Заказы будут сохранены локально.', 'warning');
+                }
+            });
+        }, 2000);
+
         // Filter events
         const filterIds = [
             'stockFilter', 'typeFilter', 'diameterFilter', 
@@ -976,6 +1110,15 @@ class TMKApp {
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
                 this.filters.search = e.target.value;
+                this.applyFilters();
+            });
+        }
+
+        // Sorting
+        const sortBy = document.getElementById('sortBy');
+        if (sortBy) {
+            sortBy.addEventListener('change', (e) => {
+                this.sortBy = e.target.value;
                 this.applyFilters();
             });
         }
@@ -1046,7 +1189,6 @@ class TMKApp {
                 const checkoutModal = document.getElementById('checkoutModal');
                 if (checkoutModal) {
                     checkoutModal.style.display = 'block';
-                    // Генерируем капчу при открытии формы заказа
                     setTimeout(() => {
                         this.generateCaptcha();
                     }, 100);
@@ -1123,8 +1265,38 @@ function validateQuantity(input) {
     }
 }
 
+// Глобальные функции для отладки
+window.TMKDebug = {
+    checkOrderStatus: (orderNumber) => {
+        if (window.app) {
+            return window.app.checkOrderStatus(orderNumber);
+        }
+        return Promise.reject('App not loaded');
+    },
+    
+    getCart: () => {
+        return window.app ? window.app.cart : null;
+    },
+    
+    clearCart: () => {
+        if (window.app) {
+            window.app.cart = [];
+            window.app.updateCartCount();
+            console.log('Cart cleared');
+        }
+    },
+    
+    checkServer: () => {
+        if (window.app) {
+            return window.app.checkServerConnection();
+        }
+        return Promise.reject('App not loaded');
+    }
+};
+
 // Initialize app when DOM is loaded
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new TMKApp();
+    window.app = app;
 });
