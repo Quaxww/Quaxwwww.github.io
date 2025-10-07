@@ -805,6 +805,183 @@ class TMKApp {
         };
 
         try {
+           
+
+        // Обработчик оформления заказа
+        document.getElementById('submitOrder').addEventListener('click', async function() {
+            if (!validateCheckoutForm()) {
+                return;
+            }
+
+            const submitBtn = this;
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Оформляем...';
+            submitBtn.disabled = true;
+
+            try {
+                // Собираем данные заказа
+                const orderData = {
+                    customer_name: document.getElementById('customerName').value,
+                    customer_phone: document.getElementById('customerPhone').value,
+                    customer_email: document.getElementById('customerEmail').value,
+                    customer_company: document.getElementById('customerCompany').value || null,
+                    delivery_address: document.getElementById('deliveryAddress').value || null,
+                    order_comment: document.getElementById('orderComment').value || null,
+                    total_amount: parseFloat(document.getElementById('finalTotal').textContent.replace(/[^\d.]/g, '')),
+                    discount_amount: parseFloat(document.getElementById('discount').textContent.replace(/[^\d.]/g, '') || 0),
+                    subtotal_amount: parseFloat(document.getElementById('subtotal').textContent.replace(/[^\d.]/g, '')),
+                    order_items: window.cart.map(item => ({
+                        product_id: item.id,
+                        product_name: item.name,
+                        product_type: item.type,
+                        diameter: item.diameter,
+                        wall_thickness: item.wallThickness,
+                        gost: item.gost,
+                        steel_grade: item.steelGrade,
+                        warehouse: item.warehouse,
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        unit_price: item.unitPrice,
+                        total_price: item.totalPrice,
+                        discount_percentage: item.discountPercentage || 0
+                    }))
+                };
+
+                // Сохраняем заказ в базу данных
+                const orderNumber = await window.ordersDB.saveOrder(orderData);
+                
+                // Показываем подтверждение
+                showNotification(`Заказ №${orderNumber} успешно оформлен!`, 'success');
+                
+                // Очищаем корзину
+                window.cart = [];
+                updateCartUI();
+                
+                // Закрываем модальные окна
+                closeModal('checkoutModal');
+                closeModal('cartModal');
+                
+                // Сбрасываем форму
+                document.getElementById('checkoutForm').reset();
+                
+            } catch (error) {
+                console.error('Order submission error:', error);
+                showNotification('Ошибка при оформлении заказа. Попробуйте еще раз.', 'error');
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Валидация формы оформления заказа
+        function validateCheckoutForm() {
+            const fields = [
+                { id: 'customerName', name: 'ФИО' },
+                { id: 'customerPhone', name: 'Телефон' },
+                { id: 'customerEmail', name: 'Email' }
+            ];
+
+            for (let field of fields) {
+                const element = document.getElementById(field.id);
+                if (!element.value.trim()) {
+                    showNotification(`Поле "${field.name}" обязательно для заполнения`, 'error');
+                    element.focus();
+                    return false;
+                }
+            }
+
+            // Валидация email
+            const email = document.getElementById('customerEmail').value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showNotification('Введите корректный email адрес', 'error');
+                document.getElementById('customerEmail').focus();
+                return false;
+            }
+
+            // Валидация телефона
+            const phone = document.getElementById('customerPhone').value;
+            const phoneRegex = /^(\+7|8)[\s(-]?\d{3}[\s)-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}$/;
+            if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
+                showNotification('Введите корректный номер телефона', 'error');
+                document.getElementById('customerPhone').focus();
+                return false;
+            }
+
+            // Проверка капчи
+            const captchaAnswer = document.getElementById('captchaAnswer').value;
+            if (!captchaAnswer || !window.validateCaptchaAnswer(captchaAnswer)) {
+                showNotification('Неверный ответ на вопрос безопасности', 'error');
+                document.getElementById('captchaAnswer').focus();
+                return false;
+            }
+
+            return true;
+        }
+
+        // Функция для показа уведомлений
+        function showNotification(message, type = 'info') {
+            // Создаем элемент уведомления
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <span class="notification-icon">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span>
+                    <span class="notification-text">${message}</span>
+                    <button class="notification-close" onclick="this.parentElement.parentElement.remove()">×</button>
+                </div>
+            `;
+
+            // Добавляем стили для уведомления
+            if (!document.querySelector('.notification-styles')) {
+                const styles = document.createElement('style');
+                styles.className = 'notification-styles';
+                styles.textContent = `
+                    .notification {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 10000;
+                        min-width: 300px;
+                        max-width: 500px;
+                        background: white;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        border-left: 4px solid #007bff;
+                        animation: slideInRight 0.3s ease;
+                    }
+                    .notification-success { border-left-color: #28a745; }
+                    .notification-error { border-left-color: #dc3545; }
+                    .notification-content {
+                        padding: 12px 16px;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    }
+                    .notification-close {
+                        background: none;
+                        border: none;
+                        font-size: 18px;
+                        cursor: pointer;
+                        margin-left: auto;
+                    }
+                    @keyframes slideInRight {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                `;
+                document.head.appendChild(styles);
+            }
+
+            document.body.appendChild(notification);
+
+            // Автоматическое удаление через 5 секунд
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.remove();
+                }
+            }, 5000);
+}
             this.showNotification('⏳ Оформляем заказ...', 'info');
             
             // Блокируем кнопку отправки
