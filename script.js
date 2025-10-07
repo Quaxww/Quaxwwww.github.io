@@ -1,5 +1,3 @@
-// script.js - полностью обновленная версия с реальной отправкой заказов в базу данных
-
 class TMKApp {
     constructor() {
         this.products = [];
@@ -1300,3 +1298,4 @@ document.addEventListener('DOMContentLoaded', () => {
     app = new TMKApp();
     window.app = app;
 });
+
