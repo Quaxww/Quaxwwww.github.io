@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang='ru'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Форма оформления заказа</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .form-container {
+            padding: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+        
+        input[type='text'],
+        input[type='tel'],
+        input[type='email'],
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+        
+        input:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            background-color: white;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        input:required,
+        textarea:required {
+            border-left: 4px solid #e74c3c;
+        }
+        
+        input:valid,
+        textarea:valid {
+            border-left: 4px solid #2ecc71;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+            font-family: inherit;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .submit-btn:hover {
+            background: linear-gradient(135deg, #2980b9, #3498db);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+        
+        .required {
+            color: #e74c3c;
+        }
+        
+        .field-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                border-radius: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .form-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📦 Оформление заказа</h1>
+            <p>Заполните форму ниже для завершения заказа</p>
+        </div>
+        
+        <div class="form-container">
+            <form method="POST" action="/submit">
+                <div class="form-group">
+                    <label><span class="field-icon">👤</span>ФИО <span class="required">*</span></label>
+                    <input type="text" name="customerName" required 
+                           placeholder="Иванов Иван Иванович"
+                           pattern="[А-Яа-яЁё\s]{3,}"
+                           title="Введите ФИО кириллицей">
+                </div>
+                
+                <div class="form-group">
+                    <label><span class="field-icon">📞</span>Телефон <span class="required">*</span></label>
+                    <input type="tel" name="customerPhone" required 
+                           placeholder="+7 (999) 999-99-99"
+                           title="Введите номер в формате +7 XXX XXX-XX-XX">
+                </div>
+                
+                <div class="form-group">
+                    <label><span class="field-icon">📧</span>Email <span class="required">*</span></label>
+                    <input type="email" name="customerEmail" required 
+                           placeholder="ivanov@example.ru">
+                </div>
+                
+                <div class="form-group">
+                    <label><span class="field-icon">🏢</span>Компания</label>
+                    <input type="text" name="customerCompany" 
+                           placeholder="Название вашей компании">
+                </div>
+                
+                <div class="form-group">
+                    <label><span class="field-icon">📍</span>Адрес доставки</label>
+                    <textarea name="deliveryAddress" 
+                              placeholder="Город, улица, дом, квартира"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label><span class="field-icon">💬</span>Комментарий к заказу</label>
+                    <textarea name="orderComment" 
+                              placeholder="Дополнительные пожелания или комментарии"></textarea>
+                </div>
+                
+                <button type="submit" class="submit-btn">
+                    🚀 Отправить заказ
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Добавляем маску для телефона
+        const phoneInput = document.querySelector('input[name="customerPhone"]');
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.startsWith('7') || value.startsWith('8')) {
+                value = value.substring(1);
+            }
+            if (value.length > 0) {
+                value = '+7 (' + value;
+                if (value.length > 7) value = value.substring(0, 7) + ') ' + value.substring(7);
+                if (value.length > 12) value = value.substring(0, 12) + '-' + value.substring(12);
+                if (value.length > 15) value = value.substring(0, 15) + '-' + value.substring(15);
+            }
+            e.target.value = value;
+        });
+
+        // Валидация формы перед отправкой
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const requiredFields = this.querySelectorAll('[required]');
+            let isValid = true;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.style.borderColor = '#e74c3c';
+                } else {
+                    field.style.borderColor = '#2ecc71';
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                alert('Пожалуйста, заполните все обязательные поля (отмечены *)');
+            }
+        });
+    </script>
+</body>
+</html>
