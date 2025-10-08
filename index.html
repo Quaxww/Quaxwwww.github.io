@@ -237,54 +237,7 @@
                 </div>
                 <div class="modal-body">
                     <form class="checkout-form" id="checkoutForm">
-                        <div class="form-group">
-                            <label>👤 ФИО *</label>
-                            <input type="text" id="customerName" required 
-                                   placeholder="Иванов Иван Иванович"
-                                   oninput="app.validateField(this)">
-                        </div>
-                        <div class="form-group">
-                            <label>📞 Телефон *</label>
-                            <input type="tel" id="customerPhone" required 
-                                   placeholder="+7 (999) 999-99-99"
-                                   oninput="app.validateField(this)">
-                        </div>
-                        <div class="form-group">
-                            <label>📧 Email *</label>
-                            <input type="email" id="customerEmail" required 
-                                   placeholder="ivanov@example.ru"
-                                   oninput="app.validateField(this)">
-                        </div>
-                        <div class="form-group">
-                            <label>🏢 Компания</label>
-                            <input type="text" id="customerCompany" 
-                                   placeholder="Название вашей компании">
-                        </div>
-                        <div class="form-group">
-                            <label>📍 Адрес доставки</label>
-                            <textarea id="deliveryAddress" 
-                                      placeholder="Город, улица, дом, квартира"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>💬 Комментарий к заказу</label>
-                            <textarea id="orderComment" 
-                                      placeholder="Дополнительные пожелания или комментарии"></textarea>
-                        </div>
-                        
-                        <!-- Капча -->
-                        <div class="form-group">
-                            <label>🔒 Подтвердите, что вы не робот *</label>
-                            <div class="captcha-container">
-                                <div class="captcha-question" id="captchaQuestion">
-                                    <!-- Вопрос капчи будет сгенерирован автоматически -->
-                                </div>
-                                <input type="text" id="captchaAnswer" required 
-                                       placeholder="Введите ответ"
-                                       oninput="app.validateCaptcha(this)">
-                                <button type="button" class="btn secondary" id="refreshCaptcha" 
-                                        onclick="app.generateCaptcha()">🔄 Обновить</button>
-                            </div>
-                            <div class="captcha-hint" id="captchaHint"></div>
+                        <a href="form.html"></a>
                         </div>
                     </form>
                 </div>
